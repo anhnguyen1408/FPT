@@ -11,20 +11,17 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
 import os
 
-# Hàm chuẩn hóa chuỗi
 def chuan_hoa_text(text):
     if isinstance(text, str):
-        return text.strip().replace('\u200b', '')
+        return text.strip().replace('​', '')
     return str(text).strip()
 
-# Đọc dữ liệu từ Excel
 def doc_du_lieu(file_path):
     df = pd.read_excel(file_path, dtype=str)
     df = df[['Mã số thuế', 'Mã tra cứu', 'URL']]
     df = df.applymap(chuan_hoa_text)
     return df
 
-# Mở Chrome
 def tao_trinh_duyet():
     download_path = os.path.abspath("hoa_don")
     os.makedirs(download_path, exist_ok=True)
@@ -41,7 +38,6 @@ def tao_trinh_duyet():
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     return driver
 
-# Tra cứu hóa đơn FPT và tải PDF/XML nếu có thể
 def tra_cuu_fpt(driver, url, mst, ma_tra_cuu):
     driver.get(url)
     try:
@@ -66,7 +62,6 @@ def tra_cuu_fpt(driver, url, mst, ma_tra_cuu):
         try:
             first_row = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, 'table tbody tr')))
             first_row.click()
-            print("✅ Đã click vào kết quả")
             time.sleep(2)
         except:
             driver.switch_to.default_content()
@@ -75,16 +70,16 @@ def tra_cuu_fpt(driver, url, mst, ma_tra_cuu):
         try:
             btn_pdf = wait.until(EC.element_to_be_clickable((By.XPATH, '//button[span[contains(text(), "PDF")]]')))
             btn_pdf.click()
-            print("📥 Đã click nút tải PDF")
         except:
-            print("⚠ Không thấy nút PDF")
+            pass
 
         try:
-            btn_xml = wait.until(EC.element_to_be_clickable((By.XPATH, '//button[span[contains(@class, "mdi-xml")]]')))
+            btn_xml = wait.until(EC.element_to_be_clickable((
+                By.XPATH, '//button[contains(@class, "webix_button") and contains(@class, "webix_img_btn")]'
+            )))
             btn_xml.click()
-            print("📥 Đã click nút tải XML")
         except:
-            print("⚠ Không thấy nút XML")
+            pass
 
         time.sleep(4)
         driver.switch_to.default_content()
@@ -94,50 +89,47 @@ def tra_cuu_fpt(driver, url, mst, ma_tra_cuu):
         driver.switch_to.default_content()
         return f"Lỗi khi tra cứu: {str(e)}"
 
-# Tra cứu hóa đơn MISA
 def tra_cuu_misa(driver, url, ma_tra_cuu):
     driver.get(url)
     try:
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "txtCode"))).send_keys(ma_tra_cuu)
-        driver.find_element(By.ID, "btnSearch").click()
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'invoice-result')))
+        wait = WebDriverWait(driver, 10)
+        input_code = wait.until(EC.presence_of_element_located((By.ID, "txtCode")))
+        input_code.clear()
+        input_code.send_keys(ma_tra_cuu)
+
+        btn_search = wait.until(EC.element_to_be_clickable((By.ID, "btnSearchInvoice")))
+        btn_search.click()
+
+        wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'm-invoice-info')))
         return "Thành công"
     except Exception as e:
         return f"Lỗi: {str(e)}"
 
-# Tra cứu hóa đơn BKAV
-def tra_cuu_bkav(driver, url, ma_tra_cuu):
-    driver.get(url)
+def tra_cuu_ehoadon(driver, url, ma_tra_cuu):
+    driver.get(url + ma_tra_cuu)
     try:
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "txtInvoiceCode"))).send_keys(ma_tra_cuu)
-        driver.find_element(By.ID, "btnSearch").click()
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'divResult')))
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "invoice-info")))
         return "Thành công"
     except Exception as e:
         return f"Lỗi: {str(e)}"
 
-# Thêm điều kiện phân trang theo URL từ input
 def chay_tra_cuu():
-    print("🚀 Bắt đầu chương trình...")
     df = doc_du_lieu("input.xlsx")
-    print("✅ Đã đọc dữ liệu từ input.xlsx.")
 
     ket_qua = []
     driver = tao_trinh_duyet()
-    print("🌐 Trình duyệt Chrome đã sẵn sàng.")
 
     for index, row in df.iterrows():
         mst = row['Mã số thuế'].strip()
         ma_tra_cuu = row['Mã tra cứu'].strip()
         url = row['URL'].strip().lower()
-        print(f"🔍 Tra cứu: {url} | MST: {mst} | MãTC: {ma_tra_cuu}")
 
         if "fpt" in url:
             trang_thai = tra_cuu_fpt(driver, url, mst, ma_tra_cuu)
-        elif "misa" in url or "meinvoice.vn" in url:
+        elif "meinvoice.vn" in url:
             trang_thai = tra_cuu_misa(driver, url, ma_tra_cuu)
-        elif "bkav" in url:
-            trang_thai = tra_cuu_bkav(driver, url, ma_tra_cuu)
+        elif "van.ehoadon.vn" in url:
+            trang_thai = tra_cuu_ehoadon(driver, url, ma_tra_cuu)
         else:
             trang_thai = "Không hỗ trợ URL này"
 
@@ -151,7 +143,6 @@ def chay_tra_cuu():
 
     driver.quit()
     pd.DataFrame(ket_qua).to_excel("ketqua.xlsx", index=False)
-    print("✅ Đã ghi kết quả vào ketqua.xlsx")
 
 if __name__ == "__main__":
     chay_tra_cuu()
