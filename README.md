@@ -14,7 +14,7 @@ https://chromedriver.chromium.org/downloads
 
 4. Chạy script:
 ```
-python main_fpt.py
+py main_fpt.py
 ```
 
 ## Đầu vào: `input.xlsx`
@@ -25,5 +25,5 @@ Gồm 4 cột đúng theo tài liệu FPT:
 - URL tra cứu
 
 ## Đầu ra:
-- Thư mục `download/`: chứa các file hóa đơn XML tải về
+- Thư mục `Invoices`: chứa các file hóa đơn XML tải về
 - File `ketqua.xlsx`: chứa thông tin tổng hợp từ các hóa đơn
