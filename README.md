@@ -26,4 +26,4 @@ Gồm 4 cột đúng theo tài liệu FPT:
 
 ## Đầu ra:
 - Thư mục `Invoices`: chứa các file hóa đơn XML tải về
-- File `ketqua.xlsx`: chứa thông tin tổng hợp từ các hóa đơn
+- File `output.xlsx`: chứa thông tin tổng hợp từ các hóa đơn
